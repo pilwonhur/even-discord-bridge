@@ -1,0 +1,23 @@
+{
+  "name": "even-discord-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Authenticated relay from a test client to the existing Chris session via a dedicated Discord relay bot",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/main.ts",
+    "start:mock": "RELAY_MODE=mock node --env-file-if-exists=.env src/main.ts",
+    "client": "node --env-file-if-exists=.env src/cli.ts",
+    "admin": "node --env-file-if-exists=.env src/admin.ts",
+    "test": "node --test --test-reporter=spec tests/*.test.ts",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "typescript": "7.0.2"
+  },
+  "license": "MIT"
+}

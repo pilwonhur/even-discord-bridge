@@ -1,0 +1,29 @@
+node_modules/
+.DS_Store
+
+# Runtime state, logs, secrets (never published)
+data/
+.env
+*.sqlite
+*.sqlite-*
+
+# Local, server-specific configuration (copy the *.example files)
+config/live.env
+app/.env.local
+app/app.json
+
+# Build output
+app/dist/
+app/build/
+
+# Private records kept on this Mac only: they carry Discord/OpenClaw IDs, tailnet names, or personal notes
+worklog/
+live-evidence/
+docs/evidence/
+docs/v1.0/
+docs/preflight.md
+ops/
+scripts/live-at20.sh
+scripts/live-at21.sh
+scripts/config-fingerprint.py
+*.zip

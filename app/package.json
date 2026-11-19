@@ -1,0 +1,23 @@
+{
+  "name": "g2-relay-app",
+  "private": true,
+  "version": "0.3.0",
+  "type": "module",
+  "description": "P1 Even Hub app (G2/R1): voice question to Chris via the relay (P1-05). spike.html = P1-01 device spike.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit -p . && vite build",
+    "typecheck": "tsc --noEmit -p .",
+    "pack": "npm run build && evenhub pack app.json dist -o build/g2-chris.ehpk"
+  },
+  "dependencies": {
+    "@evenrealities/even_hub_sdk": "0.0.16"
+  },
+  "devDependencies": {
+    "@evenrealities/evenhub-cli": "0.2.0",
+    "@evenrealities/evenhub-simulator": "0.9.5",
+    "typescript": "7.0.2",
+    "vite": "8.3.5"
+  },
+  "license": "MIT"
+}

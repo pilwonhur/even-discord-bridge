@@ -1,0 +1,26 @@
+{
+  "package_id": "dev.g2relay.chris",
+  "edition": "202601",
+  "name": "G2 Chris",
+  "version": "0.3.0",
+  "min_app_version": "2.2.10",
+  "min_sdk_version": "0.0.16",
+  "entrypoint": "index.html",
+  "permissions": [
+    {
+      "name": "network",
+      "desc": "Talk to the owner's relay on the owner's tailnet: device pairing, speech-to-text on the owner's Mac, sending the confirmed sentence to Chris and reading the reply.",
+      "whitelist": [
+        "https://<mac>.<tailnet>.ts.net:8443"
+      ]
+    },
+    {
+      "name": "g2-microphone",
+      "desc": "Record a question from the glasses microphone only while the user is speaking (press to start and stop). Audio goes only to the owner's Mac for transcription and is not kept."
+    }
+  ],
+  "supported_languages": [
+    "en",
+    "ko"
+  ]
+}

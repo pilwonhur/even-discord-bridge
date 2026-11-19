@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>G2 Chris</title>
+    <style>
+      body { font: 15px -apple-system, system-ui, sans-serif; margin: 12px; background: #111; color: #cfc; }
+      button { font: inherit; padding: 10px 12px; margin: 0 6px 8px 0; }
+      #glasses { border: 1px solid #3a3; padding: 8px; min-height: 9em; font-size: 15px; }
+      pre { white-space: pre-wrap; word-break: break-all; font-size: 12px; }
+      .muted { color: #8a8; font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <h3>G2 Chris</h3>
+    <p class="muted">안경 화면과 같은 내용입니다. 아래 버튼은 안경 누르기·쓸기와 같습니다.</p>
+    <pre id="glasses"></pre>
+    <div>
+      <button id="b-click">누르기</button>
+      <button id="b-double">두 번</button>
+      <button id="b-up">위로</button>
+      <button id="b-down">아래로</button>
+    </div>
+    <div><button id="b-unpair">이 휴대폰 등록 지우기</button></div>
+    <pre id="log"></pre>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>G2 TTS Spike</title>
+    <style>
+      body { font: 14px -apple-system, system-ui, sans-serif; margin: 12px; background: #111; color: #cfc; }
+      button { font: inherit; padding: 10px 12px; margin: 0 6px 8px 0; }
+      pre { white-space: pre-wrap; word-break: break-all; font-size: 12px; }
+      .muted { color: #8a8; font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <h3>G2 TTS Spike (T0)</h3>
+    <p class="muted">A = iPhone 내장 음성(speechSynthesis), B = Mac에서 만든 음성 파일(&lt;audio&gt;). Discord에는 아무것도 보내지 않습니다.</p>
+    <div>
+      <button id="a-now">A 지금</button>
+      <button id="a-long">A 긴 답(300자)</button>
+      <button id="a-net">A 서버 응답 뒤</button>
+      <button id="b-now">B 지금</button>
+    </div>
+    <div>
+      <button id="a-later">A 10초 뒤</button>
+      <button id="b-later">B 10초 뒤</button>
+      <button id="stop">멈춤</button>
+      <button id="rec">녹음 3초</button>
+    </div>
+    <div><button id="rec-a">녹음 3초 → 바로 A</button></div>
+    <div><button id="session">audioSession: 없음</button></div>
+    <pre id="glasses"></pre>
+    <pre id="log"></pre>
+    <script type="module" src="/src/tts-spike.ts"></script>
+  </body>
+</html>

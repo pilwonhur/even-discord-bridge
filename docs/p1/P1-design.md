@@ -150,6 +150,7 @@ P1-02~05는 S1·S2 결과를 본 뒤 확정한다. 특히 S1(한글)이 실패�
 - P1-05 G2 Chris 앱 0.2.0: 실기기 첫 왕복 PASS (2026-11-19). "안녕. 넌 누구야?" 정확 인식(whisper 1.26 s), 확인 후 게시, Chris 답 9.1 s 만에 렌즈 표시, 깨짐 없음 (device-test-plan §1.2).
 - 패키징 준비 (0.2.1): `npm run pack`, 아이콘, `data/allowed-origins.txt`로 설치형 앱 origin 추가 (device-test-plan §1.3). Even 계정 로그인·업로드는 사용자 로그인 후.
 - 설치형 앱(Private build 0.2.1) 왕복 PASS (2026-11-20). WebView origin은 `http://127.0.0.1:<실행마다 바뀌는 포트>` → relay가 루프백 한정 포트 와일드카드 허용. Private build는 5분 잠금 미지원(Even 문서).
+- 답 음성 읽기(TTS, 켬/끔) 추가 계획 (2026-11-20): [tts-design.md](tts-design.md). G2에 스피커가 없어 iPhone(스피커·이어폰)에서 읽는다. 실기기 스파이크 T0부터.
 - 미확인: 조용한 환경의 G2 RMS (500 임계값 보정 필요), 다른 문장·환경의 인식률, AT-23/AT-24, 패키지 앱 origin.
 
 ## 9. 사용자 결정 (2026-11-17)

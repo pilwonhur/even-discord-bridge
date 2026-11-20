@@ -1,4 +1,5 @@
-// P1-05 G2 voice app for Chris (docs/p1/P1-design.md §5).
+// P1-05 G2 voice app for Chris (docs/p1/P1-design.md §5). Replies can also be read aloud on the iPhone
+// (docs/p1/tts-design.md): idle 아래로 쓸기 / phone button toggles it, off by default.
 //   pairing → idle → listening → transcribing → confirm → awaiting → reply → idle   (+ error)
 // The relay is the source of truth: only the device token and the last request ID are kept on the phone.
 // Audio stays in memory until it is posted to the Mac relay for whisper, then it is dropped.
@@ -16,13 +17,16 @@ import type { EvenAppBridge, EvenHubEvent } from '@evenrealities/even_hub_sdk';
 import { RELAY, RelayError, api, uuid } from './api.ts';
 import type { AskView } from './api.ts';
 import { paginate } from './paginate.ts';
+import { Speaker, audioSession, sessionInfo } from './speech.ts';
 
-const VERSION = '0.3.0';
+const VERSION = '0.4.1';
 const MAX_RECORD_MS = 30_000;
 const MAX_PCM_BYTES = 960_000;
 const PAGE_CHARS = 180; // tune on hardware (P1-06)
 const K_TOKEN = 'g2relay.deviceToken';
 const K_LAST = 'g2relay.lastRequestId';
+const K_SPEAK = 'g2relay.speak'; // '1' = read replies aloud (docs/p1/tts-design.md V3: off unless set)
+const K_PLAYBACK = 'g2relay.speakPlayback'; // '1' = ask for the 'playback' audio session while reading (AirPods diagnosis)
 
 // ---- phone-side log (Even app page; never sent anywhere) -------------------------------------
 const $ = (id: string) => document.getElementById(id)!;
@@ -43,7 +47,7 @@ type State =
   | { k: 'transcribing' }
   | { k: 'confirm'; transcriptId: string; text: string }
   | { k: 'awaiting'; requestId: string; since: number; note: string }
-  | { k: 'reply'; requestId: string; pages: string[]; page: number; late: boolean }
+  | { k: 'reply'; requestId: string; text: string; pages: string[]; page: number; late: boolean }
   | { k: 'error'; message: string };
 
 let st: State = { k: 'boot' };
@@ -52,7 +56,38 @@ let token = '';
 let pageReady = false;
 let gen = 0; // bumps on every state change; async loops stop when it moves on
 
+// ---- read aloud (docs/p1/tts-design.md) ---------------------------------------------------------
+let speakOn = false;
+const speaker = new Speaker({ onChange: () => render(), log });
+let micClosedAt = 0;
+
+/** Read aloud, logging what may decide AirPods vs iPhone speaker (tts-design §9). */
+function readAloud(text: string): boolean {
+  const since = micClosedAt ? `${((Date.now() - micClosedAt) / 1000).toFixed(0)}s` : '없음';
+  log(`읽기 요청 녹음 끝 후 ${since} · 화면 ${document.visibilityState} · playback 고정 ${speaker.forcePlayback ? '켬' : '끔'}`);
+  return speaker.speak(text);
+}
+
+function setPlayback(on: boolean, save = true): void {
+  speaker.forcePlayback = on;
+  if (save) void bridge?.setLocalStorage(K_PLAYBACK, on ? '1' : '0').catch(() => false);
+  $('b-playback').textContent = `오디오 playback 고정: ${on ? '켬' : '끔'} (현재 ${sessionInfo()})`;
+  if (save) log(`오디오 playback 고정 ${on ? '켬' : '끔'}`);
+}
+
+function setSpeakOn(on: boolean): void {
+  speakOn = on;
+  void bridge?.setLocalStorage(K_SPEAK, on ? '1' : '0').catch(() => false);
+  if (!on) speaker.stop();
+  $('b-speak').textContent = `음성 읽기: ${on ? '켬' : '끔'}`;
+  log(`음성 읽기 ${on ? '켬' : '끔'}${on && !speaker.available ? ' (이 휴대폰에서 읽기 불가)' : ''}`);
+  if (st.k === 'idle') set({ k: 'idle', note: on && !speaker.available ? '이 휴대폰에서 음성 읽기 불가' : `음성 읽기 ${on ? '켬' : '끔'}` });
+  else render();
+}
+
 function set(next: State): void {
+  // Reading belongs to the reply screen: closing it, recording, or anything else stops it (no speaker into the mic).
+  if (next.k !== 'reply') speaker.stop();
   st = next;
   gen++;
   render();
@@ -66,7 +101,7 @@ function lensText(): string {
     case 'pairing':
       return ['Chris · 기기 등록', '', `등록 번호  ${st.code.slice(0, 3)} ${st.code.slice(3)}`, '', 'Mac에서:  npm run admin -- pair ' + st.code, st.note || `${Math.max(0, Math.round((st.expiresAt - Date.now()) / 1000))}초 안에 승인`, '두 번 = 새 번호'].join('\n');
     case 'idle':
-      return ['Chris', '', '누르기 = 말하기', '위로 쓸기 = 지난 답 보기', '', st.note].join('\n');
+      return ['Chris', '', '누르기 = 말하기', '위로 쓸기 = 지난 답 보기', `아래로 쓸기 = 음성 읽기 ${speakOn ? '켬' : '끔'}`, '', st.note].join('\n');
     case 'listening':
       return ['Chris', '', st.hearing ? `● 듣는 중…  ${sec(st.startedAt)}초` : '마이크 준비 중…', '', '누르기 = 끝 · 두 번 = 취소', `(최대 ${MAX_RECORD_MS / 1000}초)`].join('\n');
     case 'transcribing':
@@ -79,8 +114,9 @@ function lensText(): string {
       return ['Chris', '', `전송됨 · 답 기다리는 중 ${sec(st.since)}초`, st.note, '', '두 번 = 화면 닫기 (답은 위로 쓸기로 다시 보기)'].join('\n');
     case 'reply': {
       const n = st.pages.length;
-      const head = `Chris 답${n > 1 ? ` ${st.page + 1}/${n}` : ''}${st.late ? ' (늦은 답)' : ''}`;
-      const foot = n > 1 ? '위·아래 = 넘기기 · 누르기 = 닫기' : '누르기 = 닫기';
+      const head = `Chris 답${n > 1 ? ` ${st.page + 1}/${n}` : ''}${st.late ? ' (늦은 답)' : ''}${speaker.speaking ? ' · 읽는 중' : ''}`;
+      const dbl = speaker.speaking ? '멈춤' : '읽기';
+      const foot = n > 1 ? `위·아래 넘기기 · 누르기 닫기 · 두 번 ${dbl}` : `누르기 = 닫기 · 두 번 = ${dbl}`;
       return [head, st.pages[st.page] ?? '', '', foot].join('\n');
     }
     case 'error':
@@ -229,6 +265,7 @@ function onAudio(pcm: Uint8Array): void {
 
 async function closeMic(): Promise<void> {
   await bridge?.audioControl(false).catch(() => false);
+  micClosedAt = Date.now();
 }
 
 async function cancelListening(): Promise<void> {
@@ -314,10 +351,13 @@ async function poll(myGen: number, id: string): Promise<void> {
   }
 }
 
-function showReply(v: AskView): void {
+/** auto = a reply that just arrived (read aloud if on); false = looking at the last one again (read on double). */
+function showReply(v: AskView, auto = true): void {
   log(`답 ${v.status} ${v.reply_available ? `${[...v.reply].length}자` : '(본문 없음)'}`);
   if (v.reply_available) pendingDisplayed = v.request_id;
-  set({ k: 'reply', requestId: v.request_id, pages: paginate(v.reply, PAGE_CHARS), page: 0, late: v.late_reply });
+  set({ k: 'reply', requestId: v.request_id, text: v.reply_available ? v.reply : '', pages: paginate(v.reply, PAGE_CHARS), page: 0, late: v.late_reply });
+  // Status lines (timeout, failure) are not read: the lens shows them, and sound in a meeting costs more.
+  if (auto && speakOn && v.reply_available) readAloud(v.reply);
 }
 
 async function showLast(): Promise<void> {
@@ -329,7 +369,7 @@ async function showLast(): Promise<void> {
       set({ k: 'awaiting', requestId: id, since: Date.now(), note: '이전 질문 답 기다리는 중' });
       return void poll(gen, id);
     }
-    showReply(data);
+    showReply(data, false);
   } catch (e) {
     if (await handleAuthError(e)) return;
     set({ k: 'idle', note: e instanceof RelayError && e.code === 'not_found' ? '지난 답이 서버에 없음' : errorText(e) });
@@ -348,6 +388,7 @@ function onInput(i: Input): void {
     case 'idle':
       if (i === 'click') void startListening();
       else if (i === 'up') void showLast();
+      else if (i === 'down') setSpeakOn(!speakOn);
       return;
     case 'listening':
       if (i === 'click') void stopListening();
@@ -361,8 +402,13 @@ function onInput(i: Input): void {
       if (i === 'double') set({ k: 'idle', note: '답은 위로 쓸기로 다시 보기' });
       return;
     case 'reply':
-      if (i === 'click' || (i === 'double' && st.pages.length === 1)) set({ k: 'idle', note: '' });
-      else if (i === 'down' && st.page < st.pages.length - 1) {
+      if (i === 'click') set({ k: 'idle', note: '' });
+      else if (i === 'double') {
+        // Stop, or read this reply from the start (even with reading off: an explicit ask).
+        if (speaker.speaking) speaker.stop();
+        else if (!st.text) log('읽을 답 없음');
+        else if (!readAloud(st.text)) log('읽기 불가');
+      } else if (i === 'down' && st.page < st.pages.length - 1) {
         st.page++;
         render();
       } else if (i === 'up' && st.page > 0) {
@@ -417,6 +463,9 @@ function onHubEvent(ev: EvenHubEvent): void {
 for (const [id, i] of [['b-click', 'click'], ['b-double', 'double'], ['b-up', 'up'], ['b-down', 'down']] as const) {
   $(id).addEventListener('click', () => onInput(i));
 }
+$('b-speak').addEventListener('click', () => setSpeakOn(!speakOn));
+$('b-playback').addEventListener('click', () => setPlayback(!speaker.forcePlayback));
+audioSession()?.addEventListener('statechange', () => log(`오디오 상태 ${sessionInfo()}`));
 $('b-unpair').addEventListener('click', async () => {
   token = '';
   await bridge?.setLocalStorage(K_TOKEN, '');
@@ -438,6 +487,10 @@ async function main(): Promise<void> {
   // A WebView reload (dev server, re-scan) finds the startup page already there → "invalid"; rebuild it instead.
   if (result === StartUpPageCreateResult.invalid) pageReady = await bridge.rebuildPageContainer(new RebuildPageContainer(page())).catch(() => false);
   log(`화면 생성 → ${result}${result === StartUpPageCreateResult.invalid ? ` (다시 만들기 ${pageReady})` : ''}`);
+  speakOn = (await bridge.getLocalStorage(K_SPEAK).catch(() => '')) === '1';
+  $('b-speak').textContent = `음성 읽기: ${speakOn ? '켬' : '끔'}`;
+  setPlayback((await bridge.getLocalStorage(K_PLAYBACK).catch(() => '')) === '1', false);
+  log(`음성 읽기 ${speakOn ? '켬' : '끔'} (설정) · playback 고정 ${speaker.forcePlayback ? '켬' : '끔'} · 오디오 ${sessionInfo()}`);
   token = (await bridge.getLocalStorage(K_TOKEN).catch(() => '')) || '';
   if (!token) return void startPairing();
   set({ k: 'idle', note: '' });

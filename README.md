@@ -29,6 +29,7 @@ A small relay that lets you talk to an existing Discord-based AI assistant sessi
 | P0 | 인증된 요청 → 중계 봇 게시 → 기존 세션의 답 회수 (모의시험 AT-01~15, 실연결 AT-16~22) | PASS |
 | P1 경로 S | iPhone Siri 단축어 → `POST /v1/ask` → 답을 Siri가 읽음 | 동작 (실사용 중) |
 | P1 G2 앱 | 기기 등록 → 안경 마이크 녹음 → Mac 인식 → 확인 후 전송 → 답을 렌즈에 페이지로 표시 | 실기기 왕복 PASS (Even Hub Private build) |
+| 답 음성 읽기 | 답을 iPhone(스피커·이어폰)으로 읽기, 켬/끔 ([docs/p1/tts-design.md](docs/p1/tts-design.md)) | 스파이크 PASS(잠금 상태 포함), 0.4.0 실기기 인수 미실시 |
 | P1 인수시험 | AT-23(구간 지연)·AT-24(5분 잠금 복귀) 정식 실행 | 미실시 |
 
 실측 예 (G2, 2026-11-20): 음성 인식 1.1 s, Discord 게시 0.5 s, 비서 답 10.4 s, 답 → 렌즈 0.34 s. 지연의 대부분은 비서가 답을 만드는 시간이다. 자세한 기록: [docs/p1/device-test-plan.md](docs/p1/device-test-plan.md), [docs/test-report.md](docs/test-report.md).
@@ -89,6 +90,7 @@ echo 'VITE_RELAY_ORIGIN=https://<mac>.<tailnet>.ts.net:8443' > .env.local
 - 설치형 앱의 WebView origin은 `http://127.0.0.1:<실행마다 바뀌는 포트>`라서, relay는 이 루프백 origin만 포트 와일드카드로 허용한다(`data/allowed-origins.txt`에 `http://127.0.0.1:*`).
 - **첫 실행**: 렌즈에 6자리 번호 → Mac에서 `npm run admin -- pair <번호>` (5분 안)
 - **사용**: 누르기 → “● 듣는 중”에 말하기 → 누르기 → “보낼까요?”에서 누르기(전송)/두 번(취소) → 답은 위·아래로 쓸어 페이지 넘김
+- **음성 읽기**: 첫 화면에서 아래로 쓸기(또는 휴대폰 화면 버튼)로 켬/끔, 기본 꺼짐. 켜 두면 새 답을 iPhone 음성(`speechSynthesis`)으로 끝까지 읽는다. 답 화면에서 두 번 = 멈춤/처음부터 다시, 누르기 = 닫기(읽기도 멈춤). G2에는 스피커가 없어 소리는 iPhone 스피커나 연결된 이어폰으로 나온다.
 
 ## API 요약
 
@@ -125,9 +127,9 @@ npm run admin -- resolve-failed <id> | confirm-posted <id> <message_id> | purge
 | `src/service.ts`, `src/correlation.ts` | 상태 전이, 답 대응, timeout, 재시작 복구, catch-up |
 | `src/voice.ts`, `src/stt.ts`, `src/devices.ts`, `src/calibrate.ts` | 음성 문장 정리, whisper.cpp, 기기 페어링, 무음 기준 보정 |
 | `src/cli.ts`, `src/admin.ts` | 시험 클라이언트, 운영자 도구 |
-| `app/` | Even Hub 앱 (Vite + `@evenrealities/even_hub_sdk`). `spike.html`은 실기기 점검용 |
+| `app/` | Even Hub 앱 (Vite + `@evenrealities/even_hub_sdk`). `spike.html`·`tts-spike.html`은 실기기 점검용(빌드 제외) |
 | `scripts/` | `start-live.sh`(키체인 → 환경변수), `relay-service.sh`(LaunchAgent), `app-dev.sh` |
-| `tests/` | `node:test` 모의시험 64개 (실제 Discord·Even·whisper 정확도의 증거는 아님) |
+| `tests/` | `node:test` 모의시험 69개 (실제 Discord·Even·whisper 정확도의 증거는 아님) |
 | `docs/` | 상태 전이, 접속 경로, 봇 설정, P1 설계·실기기 시험 기록 |
 
 ## 저장소에 넣지 않은 것

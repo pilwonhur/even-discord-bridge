@@ -2,7 +2,7 @@
   "package_id": "dev.g2relay.chris",
   "edition": "202601",
   "name": "G2 Chris",
-  "version": "0.3.0",
+  "version": "0.4.1",
   "min_app_version": "2.2.10",
   "min_sdk_version": "0.0.16",
   "entrypoint": "index.html",

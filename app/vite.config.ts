@@ -1,7 +1,8 @@
 import { defineConfig, loadEnv } from 'vite';
 
-// index.html = the Chris voice app (P1-05). spike.html = P1-01 device spike: the dev server still serves
-// it (/spike.html), but it is left out of the build so the packaged .ehpk carries only the Chris app.
+// index.html = the Chris voice app (P1-05). spike.html = P1-01 device spike, tts-spike.html = read-aloud
+// spike (docs/p1/tts-design.md T0): the dev server still serves them, but they are left out of the build
+// so the packaged .ehpk carries only the Chris app.
 // base './' = relative asset URLs, since the packaged app is not served from a web root.
 // VITE_RELAY_ORIGIN (app/.env.local, untracked) = the relay's Tailscale Serve origin; it must also be the
 // network whitelist entry in app.json (untracked; copy app.json.example).

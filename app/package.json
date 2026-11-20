@@ -1,7 +1,7 @@
 {
   "name": "g2-relay-app",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.4.1",
   "type": "module",
   "description": "P1 Even Hub app (G2/R1): voice question to Chris via the relay (P1-05). spike.html = P1-01 device spike.",
   "scripts": {

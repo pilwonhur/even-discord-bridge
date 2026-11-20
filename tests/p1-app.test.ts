@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { paginate } from '../app/src/paginate.ts';
+import { speechText } from '../app/src/speechText.ts';
 
 describe('P1-05 reply pagination', () => {
   it('keeps short replies on one page', () => {
@@ -73,5 +74,25 @@ describe('P1-03 silence cutoff calibration (admin rms)', async () => {
   it('accepts only integers in range', () => {
     assert.equal(parseMinRms('800\n'), 800);
     for (const bad of [undefined, '', '49', '30001', '8e2', '-5', '800x']) assert.equal(parseMinRms(bad), null, String(bad));
+  });
+});
+
+describe('speechText (read aloud, tts-design §4)', () => {
+  it('keeps plain sentences as they are', () => {
+    assert.equal(speechText('세미나는 3시입니다.'), '세미나는 3시입니다.');
+  });
+  it('joins lines and closes heading-like lines with a full stop', () => {
+    assert.equal(speechText('오늘 일정\n3시 회의가 있습니다.\n\n저녁은 비어 있어요'), '오늘 일정. 3시 회의가 있습니다. 저녁은 비어 있어요.');
+  });
+  it('says 링크 for URLs and drops emoji and decoration', () => {
+    assert.equal(speechText('자료는 https://example.com/a?b=1 에 있어요 😀👍🏽'), '자료는 링크 에 있어요.');
+    assert.equal(speechText('★ 중요 → 내일 마감'), '중요 내일 마감.');
+  });
+  it('drops list markers but keeps their text', () => {
+    assert.equal(speechText('- 회의 3시\n- 마감 5시\n1. 수업 준비'), '회의 3시. 마감 5시. 수업 준비.');
+  });
+  it('reads a middle dot separator as a pause and skips lines with nothing to say', () => {
+    assert.equal(speechText('회의 · 마감\n---\n👍'), '회의, 마감.');
+    assert.equal(speechText(''), '');
   });
 });
